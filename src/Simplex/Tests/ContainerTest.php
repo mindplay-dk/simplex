@@ -185,12 +185,6 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $this->assertNull($pimple->raw('foo'));
     }
 
-    public function testFluentRegister()
-    {
-        $pimple = new Container();
-        $this->assertSame($pimple, $pimple->register(new SimplexServiceProvider()));
-    }
-
     /**
      * @expectedException \InvalidArgumentException
      * @expectedExceptionMessage Identifier "foo" is not defined.

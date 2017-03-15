@@ -29,7 +29,8 @@ namespace Simplex;
 use Interop\Container\ContainerInterface;
 use Interop\Container\Exception\ContainerException;
 use Interop\Container\Exception\NotFoundException;
-use Interop\Container\ServiceProvider;
+use Interop\Provider\ServiceProviderInterface;
+use Interop\Provider\ServiceRegistryInterface;
 use Simplex\Exception\EntryNotFound;
 
 /**
@@ -38,7 +39,7 @@ use Simplex\Exception\EntryNotFound;
  * @author Fabien Potencier
  * @author Matthieu Napoli <matthieu@mnapoli.fr>
  */
-class Container implements \ArrayAccess, ContainerInterface
+class Container implements \ArrayAccess, ContainerInterface, ServiceProviderInterface, ServiceRegistryInterface
 {
     private $values = array();
     private $factories;
@@ -323,38 +324,29 @@ class Container implements \ArrayAccess, ContainerInterface
     }
 
     /**
-     * Registers a service provider.
+     * Registers an entry by providing a callback (to defer the resolution of that entry.)
      *
-     * @param ServiceProvider $provider the service provider to register
-     * @param array $values An array of values that customizes the provider
+     * A valid resolver function has zero arguments and returns an entry value of any type.
      *
-     * @return static
+     * @param string   $id       Identifier of the entry to register
+     * @param callable $resolver A function that resolves and returns the value/component
      */
-    public function register(ServiceProvider $provider, array $values = array())
+    public function register($id, callable $resolver)
     {
-        $entries = $provider->getServices();
+        $this[$id] = $resolver;
+    }
 
-        foreach ($entries as $key => $callable) {
-
-            if (isset($this->keys[$key])) {
-                // Extend a previous entry
-                $this[$key] = $this->extend($key, function ($previous, ContainerInterface $c) use ($callable) {
-                    $getPrevious = function () use ($previous) {
-                        return $previous;
-                    };
-                    return call_user_func($callable, $c, $getPrevious);
-                });
-            } else {
-                $this[$key] = function (ContainerInterface $c) use ($callable) {
-                    return call_user_func($callable, $c, null);
-                };
-            }
+    /**
+     * Registers all container entries published by this service-provider.
+     *
+     * @param ServiceRegistryInterface $registry
+     */
+    public function registerWith(ServiceRegistryInterface $registry)
+    {
+        foreach ($this->keys() as $id) {
+            $registry->register($id, function () use ($id) {
+                return $this->get($id);
+            });
         }
-
-        foreach ($values as $key => $value) {
-            $this[$key] = $value;
-        }
-
-        return $this;
     }
 }

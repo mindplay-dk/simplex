@@ -26,8 +26,10 @@
 
 namespace Simplex\Tests;
 
+use Interop\Provider\ServiceProviderInterface;
+use Interop\Provider\ServiceRegistryInterface;
 use Simplex\Container;
-use Simplex\Tests\Fixtures\SimplexServiceProvider;
+use Simplex\Tests\Fixtures\Service;
 
 /**
  * @author Dominik Zogg <dominik.zogg@gmail.com>
@@ -37,41 +39,40 @@ class ServiceProviderTest extends \PHPUnit_Framework_TestCase
 {
     public function testProvider()
     {
-        $pimple = new Container();
+        // create a source Container with some dependencies:
 
-        $pimple->register(new SimplexServiceProvider());
+        $source = new Container();
 
-        $this->assertEquals('value', $pimple['param']);
-        $this->assertInstanceOf('Simplex\Tests\Fixtures\Service', $pimple['service']);
-    }
+        $this->assertInstanceOf(ServiceProviderInterface::class, $source);
+        $this->assertInstanceOf(ServiceRegistryInterface::class, $source);
 
-    public function testProviderWithRegisterMethod()
-    {
-        $pimple = new Container();
+        $source->set("value", "VALUE");
 
-        $pimple->register(new SimplexServiceProvider(), array(
-            'anotherParameter' => 'anotherValue',
-        ));
+        $source["service"] = function (Container $c) {
+            $service = new Service();
 
-        $this->assertEquals('value', $pimple['param']);
-        $this->assertEquals('anotherValue', $pimple['anotherParameter']);
+            $service->value = $c["value"];
 
-        $this->assertInstanceOf('Simplex\Tests\Fixtures\Service', $pimple['service']);
-    }
+            return $service;
+        };
 
-    public function testExtendingValue()
-    {
-        $pimple = new Container();
-        $pimple['previous'] = 'foo';
-        $pimple->register(new SimplexServiceProvider());
-        $getPrevious = $pimple['previous'];
-        $this->assertEquals('foo', $getPrevious());
-    }
+        // create an empty target Container:
 
-    public function testExtendingNothing()
-    {
-        $pimple = new Container();
-        $pimple->register(new SimplexServiceProvider());
-        $this->assertNull($pimple['previous']);
+        $target = new Container();
+
+        // export from source to target Container:
+
+        $source->registerWith($target);
+
+        $this->assertSame("VALUE", $target["value"]);
+
+        $this->assertInstanceOf(Service::class, $target["service"]);
+
+        $this->assertSame($target["service"]->value, $target["value"]);
+
+        // this last test is to make sure the implementation delegates, as opposed to copying the
+        // factory-function itself, which would lead to the creation of two distinct instances!
+
+        $this->assertSame($source["service"], $target["service"]);
     }
 }
