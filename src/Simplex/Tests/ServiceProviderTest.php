@@ -60,9 +60,9 @@ class ServiceProviderTest extends \PHPUnit_Framework_TestCase
 
         $target = new Container();
 
-        // export from source to target Container:
+        // import to target Container from source Container:
 
-        $source->registerWith($target);
+        $target->registerProvider($source);
 
         $this->assertSame("VALUE", $target["value"]);
 

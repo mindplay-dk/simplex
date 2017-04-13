@@ -324,28 +324,31 @@ class Container implements \ArrayAccess, ContainerInterface, ServiceProviderInte
     }
 
     /**
-     * Registers an entry by providing a callback (to defer the resolution of that entry.)
-     *
-     * A valid resolver function has zero arguments and returns an entry value of any type.
-     *
-     * @param string   $id       Identifier of the entry to register
-     * @param callable $resolver A function that resolves and returns the value/component
+     * @return \Psr\Container\ContainerInterface a container instance capable of providing the listed entries
      */
-    public function register($id, callable $resolver)
+    public function getContainer()
     {
-        $this[$id] = $resolver;
+        return $this;
     }
 
     /**
-     * Registers all container entries published by this service-provider.
-     *
-     * @param ServiceRegistryInterface $registry
+     * @return string[] list of identifiers for which the container instance can provide entries
      */
-    public function registerWith(ServiceRegistryInterface $registry)
+    public function listIdentifiers()
     {
-        foreach ($this->keys() as $id) {
-            $registry->register($id, function () use ($id) {
-                return $this->get($id);
+        return $this->keys();
+    }
+
+    /**
+     * Register a given provider with this service-registry.
+     *
+     * @param ServiceProviderInterface $provider
+     */
+    public function registerProvider(ServiceProviderInterface $provider)
+    {
+        foreach ($provider->listIdentifiers() as $id) {
+            $this->offsetSet($id, function () use ($id, $provider) {
+                return $provider->getContainer()->get($id);
             });
         }
     }
